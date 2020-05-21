@@ -8,6 +8,12 @@
         (list 'if (first xs)
             (if (> (count xs) 1) (nth xs 1) (throw "odd number of forms to cond"))
             (cons 'cond (rest (rest xs)))))))
+; ! WARNING: or & and can cause temporary memory leak due to caching the expression value
+; in 'or-sym' & 'and-sym' respectively (this value will be overriden upon next call to the corresponding macro)
+(def or (let* (or-sym (atom nil))
+    (macro (& args) (if (empty? args) false `(do (reset! ~or-sym ~(first args)) (if @~or-sym @~or-sym (or ~@(rest args))))))))
+(def and (let* (and-sym (atom nil))
+    (macro (& args) (if (empty? args) true `(do (reset! ~and-sym ~(first args)) (if @~and-sym (and ~@(rest args)) @~and-sym))))))
 (def last (fn (l) (if (empty? (rest l)) (first l) (last (rest l)))))
 (def but-last (fn (l) (if (empty? (rest l)) ()
     (cons (first l) (but-last (rest l)))))) ; FIXME: Tail call optimization
