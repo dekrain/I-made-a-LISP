@@ -1,0 +1,15 @@
+(import-module "library.mal")
+
+(if (= (len *ARGS*) 0)
+    (loop
+        (let* (src (input "> "))
+            (if (nil? src) (exit 0)
+                (prn (eval (read-string src)))
+            )
+        )
+    )
+    ; Else
+    (do (def *NAME* (first *ARGS*)) (def *ARGS* (rest *ARGS*))
+        (eval (load-module *NAME*))
+    )
+)

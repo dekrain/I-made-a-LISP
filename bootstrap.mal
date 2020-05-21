@@ -1,0 +1,47 @@
+(def *host-language* "C++ // Custom types // Bootstrap")
+
+; Utilities
+(def not (fn (x) (if x false true)))
+(def swap! (fn (at func & args) (reset! at (apply func (cons @at args)))))
+(def cond (macro (& xs)
+    (if (> (count xs) 0)
+        (list 'if (first xs)
+            (if (> (count xs) 1) (nth xs 1) (throw "odd number of forms to cond"))
+            (cons 'cond (rest (rest xs)))))))
+(def last (fn (l) (if (empty? (rest l)) (first l) (last (rest l)))))
+(def but-last (fn (l) (if (empty? (rest l)) ()
+    (cons (first l) (but-last (rest l)))))) ; FIXME: Tail call optimization
+(def map (fn (f l)
+    (if (empty? l) l
+        (cons (f (first l)) (map f (rest l)))))) ; FIXME: Tail call optimization
+
+; This is the definition from the guide
+; (apply-before Function A1 A2 A3 ... ARest) -> (apply Function (concat (list A1 A2 A3 ...) ARest))
+(def apply-before (macro (F & args) `(apply ~F (concat (list ~@(but-last args)) ~(last args)))))
+; (apply-after Funcion Args A1 A2 A3 ...) -> (apply Function (concat Args (list A1 A2 A3 ...)))
+(def apply-after (macro (F A & args) `(apply ~F (concat ~A (list ~@args)))))
+
+(def nil? (fn (x) (= x nil)))
+(def true? (fn (x) (= x true)))
+(def false? (fn (x) (= x false)))
+
+(def *DEBUG* (atom false))
+(def debug& (macro (ast) (if @*DEBUG* ast nil)))
+(def dbg-log (macro (& msg) `(debug& (println ~@msg))))
+
+
+; Redefine load-file
+; Old definition:
+; (def load-file (fn (fName) (eval (read-string (str "(do " (slurp fName) ")")))))
+(def load-file (fn (fName)
+    (eval (cons 'do (read-string (str "(" (slurp fName) ")"))))))
+
+; Check if there's a program name passed to the executable
+; Return -> true if enter REPL
+(if (> (count *ARGV*) 1)
+    ; Execute script
+    (do
+        (def *ARGV* (rest *ARGV*)) ; Skip exe name
+        (load-file (first *ARGV*)) nil)
+    ; Otherwise enter REPL
+    true)

@@ -1,0 +1,10 @@
+; Fibonacci script
+(prn (cons 'fibonacci *ARGV*))
+(def fib
+    (fn (a b max)
+        (if (<= a max)
+            (do
+                (prn a)
+                (fib b (+ a b) max) ))))
+(def call-print (macro (ast) `(do (prn '~ast) ~ast)))
+(call-print (fib 0 1 1000))

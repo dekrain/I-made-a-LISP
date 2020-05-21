@@ -1,0 +1,5 @@
+(def defun (macro (decl body & more) `(def ~(first decl) (fn ~(rest decl) ~body ~@more))))
+
+(defun not (x) (if x false true))
+
+(def or (macro [first & rest] `(if ~first )))

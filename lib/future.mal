@@ -1,0 +1,12 @@
+(def future (fn (callback)
+    (let* (resolved (atom nil)) (do
+            (callback ; Evaluate callback
+                (fn (val) (do (reset! resolved (list :resolved val)) (stop-thread))) ; Resolve
+                (fn (res) (do (reset! resolved (list :rejected res))) (stop-thread))) ; Reject
+            (fn [msg & args] ; Return proxy interface
+                (case msg
+                    :then
+                )
+            )
+    ))
+))
