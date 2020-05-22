@@ -3,6 +3,7 @@ This is a language strongly based on @kanaka's Make-A-Lisp project, which is an 
 # The basics
 The MAL language is based on `S-expression`s.
 An `S-expression` is either a literal value (basic type-expression) or a compound expression.
+
 The basic types in MAL are currently:
 -   A number, e.g. `123`, `-123`, `1_000_000`=`1000000`
 -   A nil `nil`, true `true` or false `false`
@@ -10,6 +11,7 @@ The basic types in MAL are currently:
 -   -   A symbol, e.g. `example`
 -   -   A string, e.g. `"asdf"`
 -   -   A keyword, e.g. `:abcd`
+
 Additional basic types are:
 -   A function, e.g. builtin function `list`, a user-defined function returned by `fn` or `macro` forms
 -   An atom, created with `atom` builtin function
@@ -36,9 +38,11 @@ A comment beggins with the `;` token and lasts to the end of the line.
 # Evaluation
 Every MAL program is a sequence of `S-expression`s and is evaluated in linear order.
 An `S-expression` `expr` is evaluated as follows:
+
 If `expr` is a literal:
 -   if `expr` is a `symbol`: lookup the `symbol` in the current environment (a.k.a. scope) and return found value.
 -   otherwise, return the `expr`
+
 If `expr` is a compound expression:
 -   if `expr` is a `vector`: evaluate every element of the vector in order, then return the new vector.
 -   if `expr` is an empty `list`: return the list.
@@ -52,7 +56,9 @@ The evaluation of `call` expression is as follows:
 
 # Special forms
 In MAL, there exist special expressions, which look like this:
+
 `(form-symbol arguments...)`
+
 Special forms are evaluated seperately by their own evaluation rules.
 An example of such a special form would be `(def sym-name value)`.
 This form takes 2 arguments: a symbol `sym-name` and an expression `value`.
@@ -78,5 +84,5 @@ The following forms are availible inside a `quasiquote` expression:
 -   `(splice-unquote expr-list)`
 
 # Standard library
-see: `src/core_lib.cpp`
+see: `src/core_lib.cpp`;
 see: `bootstrap.mal`
