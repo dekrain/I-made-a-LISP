@@ -1,5 +1,8 @@
 (def defun (macro (decl body & more) `(def ~(first decl) (fn ~(rest decl) ~body ~@more))))
 
-(defun not (x) (if x false true))
+; Stack data structure
+(defun (stack-new) (atom ()))
+(defun (stack-push s val) (do (swap! s (fn (s v) (cons v s)) val) val))
+(defun (stack-top s) (first @s))
+(defun (stack-pop s) (do (swap! s rest) nil))
 
-(def or (macro [first & rest] `(if ~first )))
