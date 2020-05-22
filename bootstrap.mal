@@ -2,6 +2,7 @@
 
 ; Utilities
 (def not (fn (x) (if x false true)))
+; (swap! v-atom func a1 a2 a3 ...) -> (reset! v-atom (func @v-atom a1 a2 a3 ...))
 (def swap! (fn (at func & args) (reset! at (apply func (cons @at args)))))
 (def cond (macro (& xs)
     (if (> (count xs) 0)
