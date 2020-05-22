@@ -1,6 +1,50 @@
 #include "interpreter.hpp"
 
 namespace mal {
+    MalValue CreateFunction(const std::shared_ptr<MalList>& args, const EnvironFrame& env, MalFunction::FKind kind) {
+        if (args->GetSize() != 2)
+            throw mal_error{"Function takes 2 arguments"};
+        if (!mh::is_sequence(args->At(0)))
+            throw mal_error{"Function takes a list/vector as first argument"};
+        ListIterator it = args->At(0).li;
+        std::vector<MalString::string_t> params;
+        MalString::string_t param_var = "";
+        while (it) {
+            MalValue v = *it;
+            ++it;
+            if (v.tag != Symbol_T)
+                throw mal_error{"Function only accepts symbol parameter names"};
+            if (v.st->Get() == "&") {
+                if (!it)
+                    throw mal_error{"Expected variadic parameter name"};
+                if ((*it).tag != Symbol_T)
+                    throw mal_error{"Function only accepts symbol parameter names"};
+                param_var = (*it).st->Get();
+                break;
+            }
+            params.push_back(v.st->Get());
+        }
+        return MalFunction::Make(std::move(params), std::move(param_var), env, args->At(1), kind);
+    }
+
+    inline EnvironFrame PrepareFunctionCall(const MalFunction& func, MalArgs&& args) {
+        if (func.IsVariadic() ? args.size() < func.params.size() : args.size() != func.params.size())
+            throw mal_error{"Arguments count doesn't match function's parameter count"};
+        EnvironFrame env = std::make_unique<Environment>(func.env);
+        std::size_t i;
+        for (i = 0; i < func.params.size(); ++i) {
+            env->set(func.params[i], std::move(args)[i]);
+        }
+        if (func.IsVariadic()) {
+            ListBuilder lb;
+            for (; i < args.size(); ++i) {
+                lb.push(std::move(args)[i]);
+            }
+            env->set(func.param_var, mh::list(lb.release()));
+        }
+        return env;
+    }
+
     MalValue Interpreter::EvalAst(const MalValue& expr, const EnvironFrame& env) {
         switch (expr.tag) {
             case Symbol_T:
@@ -103,54 +147,10 @@ namespace mal {
                     RET_VALUE(mh::nil);
             }
             else if (sym == "fn") {
-                if (args->GetSize() != 2)
-                    throw mal_error{"Fn takes 2 arguments"};
-                if (!mh::is_sequence(args->At(0)))
-                    throw mal_error{"Fn takes a list/vector as first argument"};
-                ListIterator it = args->At(0).li;
-                std::vector<MalString::string_t> params;
-                MalString::string_t param_var = "";
-                while (it) {
-                    MalValue v = *it;
-                    ++it;
-                    if (v.tag != Symbol_T)
-                        throw mal_error{"Fn only accepts symbol parameter names"};
-                    if (v.st->Get() == "&") {
-                        if (!it)
-                            throw mal_error{"Expected variadic parameter name"};
-                        if ((*it).tag != Symbol_T)
-                            throw mal_error{"Fn only accepts symbol parameter names"};
-                        param_var = (*it).st->Get();
-                        break;
-                    }
-                    params.push_back(v.st->Get());
-                }
-                RET_VALUE(MalFunction::Make(std::move(params), std::move(param_var), env, args->At(1)));
+                RET_VALUE(CreateFunction(args, env, MalFunction::KFunc));
             }
             else if (sym == "macro") {
-                if (args->GetSize() != 2)
-                    throw mal_error{"Macro takes 2 arguments"};
-                if (!mh::is_sequence(args->At(0)))
-                    throw mal_error{"Macro takes a list/vector as first argument"};
-                ListIterator it = args->At(0).li;
-                std::vector<MalString::string_t> params;
-                MalString::string_t param_var = "";
-                while (it) {
-                    MalValue v = *it;
-                    ++it;
-                    if (v.tag != Symbol_T)
-                        throw mal_error{"Macro only accepts symbol parameter names"};
-                    if (v.st->Get() == "&") {
-                        if (!it)
-                            throw mal_error{"Expected variadic parameter name"};
-                        if ((*it).tag != Symbol_T)
-                            throw mal_error{"Macro only accepts symbol parameter names"};
-                        param_var = (*it).st->Get();
-                        break;
-                    }
-                    params.push_back(v.st->Get());
-                }
-                RET_VALUE(MalFunction::Make(std::move(params), std::move(param_var), env, args->At(1), mal::MalFunction::KMacro));
+                RET_VALUE(CreateFunction(args, env, MalFunction::KMacro));
             }
             else if (sym == "quote") {
                 if (args->GetSize() != 1)
@@ -211,41 +211,13 @@ namespace mal {
             RET_VALUE(ev_func.blt(*this, ev_args));
         else /*if (ev_func.tag == Function_T)*/ {
             auto& fun = *ev_func.fun;
-            MalArgs&& ags{ev_args};
-            if (fun.IsVariadic() ? ags.size() < fun.params.size() : ags.size() != fun.params.size())
-                throw mal_error{"Arguments count doesn't match function's parameter count"};
-            EnvironFrame n_env = std::make_unique<Environment>(fun.env);
-            std::size_t i;
-            for (i = 0; i < fun.params.size(); ++i) {
-                n_env->set(fun.params[i], std::move(ags)[i]);
-            }
-            if (fun.IsVariadic()) {
-                ListBuilder lb;
-                for (; i < ags.size(); ++i) {
-                    lb.push(std::move(ags)[i]);
-                }
-                n_env->set(fun.param_var, mh::list(lb.release()));
-            }
+            auto n_env = PrepareFunctionCall(fun, ev_args);
             RET_TCO(fun.body, n_env);
         }
     }
 
     MalValue Interpreter::EvalFunction(const MalFunction& func, MalArgs&& args) {
-        if (func.IsVariadic() ? args.size() < func.params.size() : args.size() != func.params.size())
-            throw mal_error{"Arguments count doesn't match function's parameter count"};
-        EnvironFrame env = std::make_unique<Environment>(func.env);
-        std::size_t i;
-        for (i = 0; i < func.params.size(); ++i) {
-            env->set(func.params[i], std::move(args)[i]);
-        }
-        if (func.IsVariadic()) {
-            ListBuilder lb;
-            for (; i < args.size(); ++i) {
-                lb.push(std::move(args)[i]);
-            }
-            env->set(func.param_var, mh::list(lb.release()));
-        }
-        return EvaluateExpression(func.body, env);
+        return EvaluateExpression(func.body, PrepareFunctionCall(func, std::move(args)));
     }
 
     MalValue Interpreter::EvaluateExpression(const MalValue& expr, EnvironFrame env) {
