@@ -60,15 +60,16 @@ namespace mal {
     }
 
     MalValue Interpreter::QuasiQuote(const MalValue& expr) {
-        /* (defun flist? (x) (and (list? x) (not (empty? x))))
-            (defun quasiquote (x)
+        /* (defun (flist? x) (and (list? x) (not (empty? x))))
+            (defun (quasiquote x)
                 (if (flist? x)
                     (if (= (first x) 'unquote)
                         (nth x 1)
                         (if (and (flist? (first x)) (= (first (first x)) 'splice-unquote))
-                            (list 'concat (nth (first x) 1) (quasiquoute (rest x)))
-                            (list 'cons (quasiquote (first x)) (quasiquote (rest x))))
-                    (list 'quote x))) */
+                            (list 'concat (nth (first x) 1) (quasiquote (rest x)))
+                            (list 'cons (quasiquote (first x)) (quasiquote (rest x)))))
+                    (list 'quote x)) */
+        /* Experimental definition availible in bootstrap.mal: cor-quasiquote */
         if (!mh::is_flist(expr))
             return mh::list(mh::cons(mh::symbol("quote"), mh::cons(MalValue(expr), nullptr)));
         const auto& l = expr.li;

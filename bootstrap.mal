@@ -24,13 +24,35 @@
 
 ; This is the definition from the guide
 ; (apply-before Function A1 A2 A3 ... ARest) -> (apply Function (concat (list A1 A2 A3 ...) ARest))
-(def apply-before (macro (F & args) `(apply ~F (concat (list ~@(but-last args)) ~(last args)))))
+(def apply-before (macro (F & args) `(apply ~F (concat ~(cons 'list (but-last args)) ~(last args)))))
 ; (apply-after Funcion Args A1 A2 A3 ...) -> (apply Function (concat Args (list A1 A2 A3 ...)))
-(def apply-after (macro (F A & args) `(apply ~F (concat ~A (list ~@args)))))
+(def apply-after (macro (F A & args) `(apply ~F (concat ~A ~(cons 'list args)))))
+; Call a normal function like a macro (args are unevaluated)
+; (macro-call func arg1 arg2 arg3 ...)
+(def macro-call (macro (f & args) (apply (eval f) args)))
+; Call a macro like a normal function
+; (func-call func arg1 arg2 arg3 ...)
+(def func-call (macro (f & args) `(apply ~f (list ~@args))))
+
 
 (def nil? (fn (x) (= x nil)))
 (def true? (fn (x) (= x true)))
 (def false? (fn (x) (= x false)))
+(def flist? (fn (x) (and (list? x) (not (empty? x)))))
+(def fseq? (fn (x) (and (sequence? x) (not (empty? x)))))
+
+; Experimental: MAL-defined quasiquote. Original S-expr definition: src/interpreter.cc:Interpreter/QuasiQuote()
+(def cor-quasiquote (let* (
+    cor-quasiquote (fn (expr)
+        (if (flist? expr)
+            (if (= (first expr) 'unquote)
+                (nth expr 1)
+                (if (and (flist? (first expr)) (= (first (first expr)) 'splice-unquote))
+                    (list 'concat (nth (first expr) 1) (cor-quasiquote (rest expr)))
+                    (list 'cons (cor-quasiquote (first expr)) (cor-quasiquote (rest expr)))))
+            (list 'quote expr))))
+    (macro (expr) (cor-quasiquote expr))))
+
 
 (def *DEBUG* (atom false))
 (def debug& (macro (ast) (if @*DEBUG* ast nil)))
