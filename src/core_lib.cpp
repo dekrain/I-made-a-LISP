@@ -383,9 +383,8 @@ namespace {
     }
 
     DEF_FUNC(DoThrow) {
-        if (args.size() != 1 || !mh::is_string(args[0]))
-            throw mal_error{"throw: 1. argument must be a [deferred:value] string"};
-        throw mal_error{args[0].st->Get()};
+        CHECK_ARGS(1, "throw");
+        throw mal_error{MalValue(args[0])};
     }
 
     DEF_FUNC(Apply) {
@@ -451,7 +450,7 @@ namespace mal {
         if (tag == Symbol_T || tag == Keyword_T || tag == String_T)
             return a.st->Get() == b.st->Get();
         if (tag == Builtin_T) // TODO: Abstract builtin storage
-            throw mal_error{"[Deffered] Can't compare builtin functions"};
+            return a.blt == b.blt;
         if (tag == Function_T)
             return a.fun == b.fun;
         if (tag == Atom_T)

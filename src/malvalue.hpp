@@ -3,16 +3,10 @@
 #include <memory>
 #include <functional>
 #include <stack>
+#include <vector>
 
 namespace mal {
-    struct mal_error {
-        std::string msg;
-    };
-    // TODO: New impl:
-    //  MalValue msg;
-    //  mal_error(MalValue msg);
-    //  mal_error(const std::string& s_msg);
-
+    class mal_error;
     class MalList;
     class MalString;
     class MalFunction;
@@ -203,8 +197,18 @@ namespace mh {
     static const mal::MalValue mal_false{false};
 }
 
-#include "mallist.hpp"
 #include "malstring.hpp"
+
+namespace mal {
+    struct mal_error {
+        MalValue msg;
+
+        mal_error(MalValue&& msg) : msg(std::move(msg)) {}
+        mal_error(const std::string&& s_msg) : msg(mal::MalValue{mal::MalString::Make(std::move(s_msg)), mal::String_T}) {}
+    };
+}
+
+#include "mallist.hpp"
 #include "malfunction.hpp"
 
 // Mal helpers

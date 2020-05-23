@@ -192,7 +192,7 @@ namespace mal {
                     RET_VALUE(EvaluateExpression(args->First(), env));
                 } catch (const mal_error& err) {
                     auto e = std::make_shared<Environment>(env);
-                    e->set(args->At(1).st->Get(), mh::string(err.msg));
+                    e->set(args->At(1).st->Get(), err.msg);
                     RET_TCO(args->At(2), e);
                 }
             }

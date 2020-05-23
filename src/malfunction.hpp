@@ -1,7 +1,7 @@
 #pragma once
 
 #include "malvalue.hpp"
-#include "interpreter.hpp"
+#include "invoke.hpp"
 #include <vector>
 
 namespace mal {

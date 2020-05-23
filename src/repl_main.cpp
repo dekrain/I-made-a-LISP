@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
         if (!mh::is_true(re("(load-file \"bootstrap.mal\")", interp)))
             return 0;
     } catch (const mal::mal_error& err) {
-        std::cerr << "Script: Mal Error: " << err.msg << std::endl;
+        printer << mal::print_begin << "Script Mal Error: " << err.msg << mal::print_end;
         return 1;
     }
     // The REPL
@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
         try {
             rep(line, interp);
         } catch (const mal::mal_error& err) {
-            std::cerr << "Mal Error: " << err.msg << std::endl;
+            printer << mal::print_begin << "Mal Error: " << err.msg << mal::print_end;
         }
     }
     return 0;

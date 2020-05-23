@@ -2,6 +2,9 @@
 
 #include "malvalue.hpp"
 
+#include <vector>
+#include <unordered_map>
+
 namespace mal {
     struct MalArgs {
         std::vector<MalValue> vec;
