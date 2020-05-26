@@ -16,9 +16,12 @@ Additional basic types are:
 -   A function, e.g. builtin function `list`, a user-defined function returned by `fn` or `macro` forms
 -   An atom, created with `atom` builtin function
 
-A compound `S-expression` is either a list expression or a vector expression (in future: map expression).
-Example of a list expression: `(123 456 789)`, empty list `()`
-Example of a vector expression: `[123 456 789]`, empty vector `[]`
+A compound `S-expression` is either a list expression, a vector expression, or a hash-map.
+Example of a list expression: `(123 456 789)`, empty list `()`;
+Example of a vector expression: `[123 456 789]`, empty vector `[]`;
+Example of a hash-map: `{:a 123 :b 456 "c" (+ 1 (* 3 4))}`.
+A hash-map is transformed by the reader into following form:
+`{args...} -> (hash-map args...)`, case for last example: `(hash-map :a 123 :b 456 "c" (+ 1 (* 3 4)))`.
 
 A non-empty `list` expression is also called a `call` expression.
 
