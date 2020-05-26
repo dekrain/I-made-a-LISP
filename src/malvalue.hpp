@@ -8,6 +8,8 @@
 namespace mal {
     class mal_error;
     class MalList;
+    class MalMap;
+    class MapSpec;
     class MalString;
     class MalFunction;
 
@@ -19,6 +21,8 @@ namespace mal {
         //Bigint_T // TODO
         List_T,
         Vector_T,
+        Map_T,
+        MapSpec_T, // Can be converted to map
         Symbol_T,
         Keyword_T,
         String_T,
@@ -36,6 +40,8 @@ namespace mal {
         union {
             struct{} nu; // For null initialization
             std::shared_ptr<MalList> li;
+            std::shared_ptr<MalMap> mp;
+            std::shared_ptr<MapSpec> ms;
             std::shared_ptr<MalString> st;
             builtin_t blt;
             std::shared_ptr<MalFunction> fun;
@@ -59,6 +65,14 @@ namespace mal {
             : tag{tag},
               li{std::move(list)} {}
 
+        MalValue(std::shared_ptr<MalMap> map)
+            : tag{Map_T},
+              mp{std::move(map)} {}
+
+        MalValue(std::shared_ptr<MapSpec> spec)
+            : tag{MapSpec_T},
+              ms{std::move(spec)} {}
+
         MalValue(std::shared_ptr<MalString> str, MalType tag)
             : tag{tag},
               st{std::move(str)} {}
@@ -78,6 +92,10 @@ namespace mal {
         ~MalValue() {
             if (tag == List_T || tag == Vector_T) {
                 li.~shared_ptr();
+            } else if (tag == Map_T) {
+                mp.~shared_ptr();
+            } else if (tag == MapSpec_T) {
+                ms.~shared_ptr();
             } else if (tag == String_T || tag == Symbol_T || tag == Keyword_T) {
                 st.~shared_ptr();
             } else if (tag == Builtin_T) {
@@ -93,6 +111,10 @@ namespace mal {
             tag = cop.tag;
             if (tag == List_T || tag == Vector_T) {
                 init(li, cop.li);
+            } else if (tag == Map_T) {
+                init(mp, cop.mp);
+            } else if (tag == MapSpec_T) {
+                init(ms, cop.ms);
             } else if (tag == String_T || tag == Symbol_T || tag == Keyword_T) {
                 init(st, cop.st);
             } else if (tag == Builtin_T) {
@@ -110,6 +132,10 @@ namespace mal {
             tag = std::exchange(src.tag, Nil_T);
             if (tag == List_T || tag == Vector_T) {
                 init(li, std::move(src.li));
+            } else if (tag == Map_T) {
+                init(mp, std::move(src.mp));
+            } else if (tag == MapSpec_T) {
+                init(ms, std::move(src.ms));
             } else if (tag == String_T || tag == Symbol_T || tag == Keyword_T) {
                 init(st, std::move(src.st));
             } else if (tag == Builtin_T) {
@@ -123,9 +149,22 @@ namespace mal {
             }
         }
 
-        // MalValue is immutable
+        // MalValue is immutable...
         MalValue& operator=(const MalValue&) = delete;
         MalValue& operator=(MalValue&&) = delete;
+
+        // ...except for this... Yep!
+        // Requires either Map_T or MapSpec_T
+        std::shared_ptr<MalMap> Map() const {
+            if (tag == MapSpec_T) {
+                auto& th = const_cast<MalValue&>(*this);
+                auto sp = std::move(th.ms);
+                th.ms.~shared_ptr();
+                th.init(th.mp, std::make_shared<MalMap>(*sp));
+                th.tag = Map_T;
+            }
+            return mp;
+        }
 
         friend inline bool operator!=(const MalValue& a, const MalValue& b) { return !(a == b); }
         friend bool operator==(const MalValue&, const MalValue&);
@@ -151,6 +190,7 @@ namespace mal {
         constexpr MalAtom() : v{} {}
         MalAtom(MalValue&& val) : v{std::move(val)} {}
         MalAtom(const MalValue& val) : v{val} {}
+        MalAtom(const MalAtom& a) : v{a.v} {}
 
         ~MalAtom() {
             v.~MalValue();
@@ -209,11 +249,14 @@ namespace mal {
 }
 
 #include "mallist.hpp"
+#include "malmap.hpp"
 #include "malfunction.hpp"
 
 // Mal helpers
 namespace mh {
     // Value makers
+
+    inline mal::MalValue copy(const mal::MalValue& v) {return v; }
 
     inline mal::MalValue list(const std::shared_ptr<mal::MalList>& list) {
         return mal::MalValue{list, mal::List_T};
@@ -221,6 +264,10 @@ namespace mh {
 
     inline mal::MalValue vector(const std::shared_ptr<mal::MalList>& list) {
         return mal::MalValue{list, mal::Vector_T};
+    }
+
+    inline mal::MalValue hash_map(const std::shared_ptr<mal::MalMap>& map) {
+        return mal::MalValue{map};
     }
 
     inline mal::MalValue symbol(const std::string& str) {
@@ -265,11 +312,33 @@ namespace mh {
     constexpr inline bool is_string(const mal::MalValue& val) {return val.tag == mal::String_T; }
     constexpr inline bool is_list(const mal::MalValue& val) {return val.tag == mal::List_T; }
     constexpr inline bool is_vector(const mal::MalValue& val) {return val.tag == mal::Vector_T; }
+    constexpr inline bool is_map(const mal::MalValue& val) {return val.tag == mal::Map_T || val.tag == mal::MapSpec_T; }
     constexpr inline bool is_sequence(const mal::MalValue& val) {return val.tag == mal::List_T || val.tag == mal::Vector_T; }
     constexpr inline bool is_flist(const mal::MalValue& val) {return val.tag == mal::List_T && (val.li != nullptr); } // Is non-empty list?
     constexpr inline bool is_fseq(const mal::MalValue& val) {return is_sequence(val) && (val.li != nullptr); } // Is non-empty collection?
     constexpr inline bool is_atom(const mal::MalValue& val) {return val.tag == mal::Atom_T; }
     constexpr inline bool is_invokable(const mal::MalValue& val) {return val.tag == mal::Builtin_T || val.tag == mal::Function_T; }
+
+    // val must be a map
+    inline auto as_map(const mal::MalValue& val) {return val.Map(); }
+    inline auto assoc(const mal::MalValue& map, const mal::MalValue& key, const mal::MalValue& val) {
+        std::shared_ptr<mal::MapSpec> p;
+        if (map.tag == mal::MapSpec_T)
+            p = mal::MapSpec::Make(map.ms, key, val);
+        else
+            p = mal::MapSpec::Make(map.mp, key, val);
+        p->s_assoc = true;
+        return p;
+    }
+    inline auto dissoc(const mal::MalValue& map, const mal::MalValue& key) {
+        std::shared_ptr<mal::MapSpec> p;
+        if (map.tag == mal::MapSpec_T)
+            p = mal::MapSpec::Make(map.ms, key, mh::nil);
+        else
+            p = mal::MapSpec::Make(map.mp, key, mh::nil);
+        p->s_assoc = false;
+        return p;
+    }
 
     // Helper functions
 

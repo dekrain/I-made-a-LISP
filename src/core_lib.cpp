@@ -128,6 +128,24 @@ namespace {
         return mh::bool_val(mh::is_vector(args[0]));
     }
 
+    DEF_FUNC(NewMap) {
+        if (args.size() & 1)
+            throw mal_error{"hash-map takes even number of arguments"};
+        auto map = MalMap::Make();
+        for (std::size_t i = 0; i < args.size(); i += 2) {
+            const auto& key = args[i];
+            const auto& value = args[i+1];
+            map->Set(key, value);
+        }
+        return mh::hash_map(map);
+    }
+
+    DEF_FUNC(IsMap) {
+        if (args.size() == 0)
+            return mh::mal_false;
+        return mh::bool_val(mh::is_map(args[0]));
+    }
+
     DEF_FUNC(IsSequence) {
         (void)interp;
         if (args.size() == 0)
@@ -260,6 +278,65 @@ namespace {
                 lb.push(*it);
                 ++it;
             }
+        }
+        return mh::list(lb.release());
+    }
+
+    // Hash maps
+    DEF_FUNC(MapAssoc) {
+        CHECK_ARGS(3, "assoc");
+        if (!mh::is_map(args[0]))
+            throw mal_error{"First argument must be a hash-map"};
+        return mh::assoc(args[0], args[1], args[2]);
+    }
+
+    DEF_FUNC(MapDissoc) {
+        CHECK_ARGS(2, "dissoc");
+        if (!mh::is_map(args[0]))
+            throw mal_error{"First argument must be a hash-map"};
+        return mh::dissoc(args[0], args[1]);
+    }
+
+    DEF_FUNC(MapGet) {
+        CHECK_ARGS(2, "get");
+        if (!mh::is_map(args[0]))
+            throw mal_error{"First argument must be a hash-map"};
+        auto m = mh::as_map(args[0]);
+        auto i = m->Lookup(args[1]);
+        if (i == m->data.end())
+            return mh::nil;
+        return i->second.get();
+    }
+
+    DEF_FUNC(MapContains) {
+        CHECK_ARGS(2, "contains?");
+        if (!mh::is_map(args[0]))
+            throw mal_error{"First argument must be a hash-map"};
+        auto m = mh::as_map(args[0]);
+        auto i = m->Lookup(args[1]);
+        return mh::bool_val(i != m->data.end());
+    }
+
+    DEF_FUNC(MapKeys) {
+        CHECK_ARGS(1, "keys");
+        if (!mh::is_map(args[0]))
+            throw mal_error{"First argument must be a hash-map"};
+        auto m = mh::as_map(args[0]);
+        ListBuilder lb;
+        for (auto it = m->data.begin(); it != m->data.end(); ++it) {
+            lb.push(mh::copy(it->first));
+        }
+        return mh::list(lb.release());
+    }
+
+    DEF_FUNC(MapValues) {
+        CHECK_ARGS(1, "vals");
+        if (!mh::is_map(args[0]))
+            throw mal_error{"First argument must be a hash-map"};
+        auto m = mh::as_map(args[0]);
+        ListBuilder lb;
+        for (auto it = m->data.begin(); it != m->data.end(); ++it) {
+            lb.push(it->second.get());
         }
         return mh::list(lb.release());
     }
@@ -439,14 +516,35 @@ namespace mal {
         return !a && !b;
     }
 
-    bool operator==(const MalValue& a, const MalValue& b) {
-        if (a.tag != b.tag) // A & B must be the same type (!exception: A & B's types are [int | bigint])
+    // Checks maps recursively
+    bool check_map(std::shared_ptr<MalMap> a, std::shared_ptr<MalMap> b) {
+        if (a->data.size() != b->data.size())
             return false;
+        for (auto it = a->data.begin(); it != a->data.end(); ++it) {
+            auto itb = b->Lookup(it->first);
+            if (itb == b->data.end() || (it->second.v != itb->second.v))
+                return false;
+        }
+        return true;
+    }
+
+    bool operator==(const MalValue& a, const MalValue& b) {
         auto tag = a.tag;
+        auto btag = b.tag;
+        // A & B must be the same type (!exception: A & B's types are [int | bigint] or [map | mapspec])
+        if (tag == Map_T || tag == MapSpec_T) {
+            if (btag != Map_T && btag != MapSpec_T)
+                return false;
+            tag = btag = Map_T;
+        }
+        if (tag != btag)
+            return false;
         if (tag == Int_T)
             return a.no == b.no;
         if (tag == List_T || tag == Vector_T)
             return check_list(a.li, b.li);
+        if (tag == Map_T /*|| tag == MapSpec_T*/)
+            return check_map(mh::as_map(a), mh::as_map(b));
         if (tag == Symbol_T || tag == Keyword_T || tag == String_T)
             return a.st->Get() == b.st->Get();
         if (tag == Builtin_T) // TODO: Abstract builtin storage
@@ -456,6 +554,34 @@ namespace mal {
         if (tag == Atom_T)
             return a.at == b.at; // Check if point to the same atom, not comparing stored values
         return true;
+    }
+
+    std::size_t MalHash::operator()(const MalValue& v) const {
+        auto tag = v.tag;
+        switch (tag) {
+            case Int_T:
+                return v.no;
+            case List_T:
+            case Vector_T:
+                // FIXME: Add some algorithm for lists and vectors
+                return v.li->GetSize();
+            case Map_T:
+            case MapSpec_T:
+                // Note: Maps are intentionally left out
+                return static_cast<std::size_t>(-1);
+            case Symbol_T:
+            case Keyword_T:
+            case String_T:
+                // Note: strings, keywords and strings with the same content have the same hash
+                return std::hash<std::string>()(v.st->Get());
+            case Builtin_T:
+                return reinterpret_cast<std::size_t>(reinterpret_cast<void*>(v.blt));
+            case Function_T:
+            case Atom_T:
+            // Note: Atoms can't have unique hashes except addresses because their value can change
+            default:
+                return static_cast<std::size_t>(-1);
+        }
     }
 
     int compare(const MalValue& a, const MalValue& b) {
@@ -490,6 +616,8 @@ namespace mal {
         EXP_FUNC("list?", IsList)
         EXP_FUNC("vector", NewVector)
         EXP_FUNC("vector?", IsVector)
+        EXP_FUNC("hash-map", NewMap)
+        EXP_FUNC("map?", IsMap)
         EXP_FUNC("sequence?", IsSequence)
         EXP_FUNC("atom", NewAtom)
         EXP_FUNC("atom?", IsAtom)
@@ -507,6 +635,12 @@ namespace mal {
         EXP_FUNC("nth", GetElement)
         EXP_FUNC("cons", Cons)
         EXP_FUNC("concat", Concat)
+        EXP_FUNC("assoc", MapAssoc)
+        EXP_FUNC("dissoc", MapDissoc)
+        EXP_FUNC("get", MapGet)
+        EXP_FUNC("contains?", MapContains)
+        EXP_FUNC("keys", MapKeys)
+        EXP_FUNC("vals", MapValues)
         EXP_FUNC("=", IsEqual)
         EXP_FUNC("list-equal", EqList)
         EXP_FUNC("<", CmpLT)

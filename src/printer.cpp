@@ -42,10 +42,27 @@ namespace mal {
                     if (!first) {
                         stream << ' ';
                     }
-                    operator<<(list->First());
                     first = false;
+                    operator<<(list->First());
                 }
                 stream << (value.tag == List_T ? ')' : ']');
+                break;
+            }
+            case Map_T:
+            case MapSpec_T:
+            {
+                auto map = mh::as_map(value);
+                stream << '{';
+                bool first = true;
+                for (auto it = map->data.begin(); it != map->data.end(); ++it) {
+                    if (!first)
+                        stream << ' ';
+                    first = false;
+                    operator<<(it->first);
+                    stream << ' ';
+                    operator<<(it->second.v);
+                }
+                stream << '}';
                 break;
             }
             case Builtin_T:

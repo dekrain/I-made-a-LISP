@@ -1,7 +1,6 @@
 #include "reader.hpp"
 
 #include <cstring>
-#include <stack>
 
 static const char* const mal_single_chars = "[]{}()'`~^@";
 static const char* const mal_all_chars = " ,\t\v\f\r\n" "[]{}()'`~^@" ";";
@@ -135,6 +134,10 @@ namespace mal {
                 return mh::vector(ReadList(token{toktype::special, "]"}));
             } else if (tok.val == "]") {
                 throw mal_error{"Unexpected character while parsing: ']'"};
+            } else if (tok.val == "{") {
+                return mh::list(mh::cons(mh::symbol("hash-map"), ReadList(token{toktype::special, "}"})));
+            } else if (tok.val == "}") {
+                throw mal_error{"Unexpected character while parsing: '}'"};
             } else if (tok.val == "@") {
                 return mh::list(mh::cons(mh::symbol("deref"), mh::cons(ReadForm(), nullptr)));
             } else if (tok.val == "'") {
