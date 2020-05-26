@@ -464,6 +464,18 @@ namespace {
         throw mal_error{MalValue(args[0])};
     }
 
+    DEF_FUNC(GetMeta) {
+        CHECK_ARGS(1, "meta");
+        return args[0].meta ? args[0].meta->get() : mh::nil;
+    }
+
+    DEF_FUNC(WithMeta) {
+        CHECK_ARGS(2, "with-meta");
+        auto v = args[0];
+        v.meta = MalAtom::Make(args[1]);
+        return v;
+    }
+
     DEF_FUNC(Apply) {
         CHECK_ARGS(2, "apply");
         if (!mh::is_invokable(args[0]))
@@ -655,6 +667,8 @@ namespace mal {
         EXP_FUNC("eval", DoEval)
         EXP_FUNC("throw", DoThrow)
         EXP_FUNC("apply", Apply)
+        EXP_FUNC("meta", GetMeta)
+        EXP_FUNC("with-meta", WithMeta)
 #       if (ENABLE_FS)
         EXP_FUNC("slurp", Slurp)
         EXP_FUNC("load-library", LoadLibrary)

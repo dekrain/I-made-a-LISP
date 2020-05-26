@@ -48,6 +48,7 @@ namespace mal {
             std::shared_ptr<MalAtom> at;
             int no;
         };
+        std::shared_ptr<MalAtom> meta;
 
         constexpr MalValue()
             : tag{Nil_T},
@@ -107,8 +108,7 @@ namespace mal {
             }
         }
 
-        MalValue(const MalValue& cop) {
-            tag = cop.tag;
+        MalValue(const MalValue& cop) : tag{cop.tag}, meta{cop.meta} {
             if (tag == List_T || tag == Vector_T) {
                 init(li, cop.li);
             } else if (tag == Map_T) {
@@ -128,8 +128,7 @@ namespace mal {
             }
         }
 
-        MalValue(MalValue&& src) {
-            tag = std::exchange(src.tag, Nil_T);
+        MalValue(MalValue&& src) : tag{std::exchange(src.tag, Nil_T)}, meta{std::move(src.meta)} {
             if (tag == List_T || tag == Vector_T) {
                 init(li, std::move(src.li));
             } else if (tag == Map_T) {

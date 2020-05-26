@@ -69,6 +69,25 @@ The `value` is evaluated and is bound to the current environment with the name `
 
 There exist various special forms in MAL, full index below.
 
+# Advanced
+This section describes features of the language for advanced users.
+
+## Metadata
+The MAL language allows you to add metadata for every value in the interpreter!
+This is accomplished by putting an additional field to the `MalValue` structure.
+A "metadatum" of a value is an optional value that is fully transparent to most of the execution environment.
+Metadata of values can be accessed with `meta` function, which takes 1 argument: target object.
+A value with specified metadata can be created with `(with-meta value metavalue)` function.
+It can also be called through a special reader macro like this: `^metavalue expression`.
+
+Metadata can (not currently implemented) be used by the interpreter in the following scenarios:
+-   By the reader (code values) - to track filenames and line numbers of occuring expressions.
+    This can be useful for debugging (error/stack trace), but it comes with higher memory usage penalty.
+    It will be possible to toggle this feature.
+-   By the interpreter (code values) - to store some runtime profiling informations. For example it might
+    be possible to replace constant expressions with their values to speed-up execution and to mark functions
+    as `pure`, so they may also be considered when unfolding constants.
+
 # Special form index
 This section lacks descriptions; for descriptions, see: `src/interpreter.cpp:Interpreter/Apply()`
 -   `(def name value)`

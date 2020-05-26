@@ -139,15 +139,19 @@ namespace mal {
             } else if (tok.val == "}") {
                 throw mal_error{"Unexpected character while parsing: '}'"};
             } else if (tok.val == "@") {
-                return mh::list(mh::cons(mh::symbol("deref"), mh::cons(ReadForm(), nullptr)));
+                return mh::list(mh::cons(mh::symbol("deref"), mh::cons(ReadForm())));
             } else if (tok.val == "'") {
-                return mh::list(mh::cons(mh::symbol("quote"), mh::cons(ReadForm(), nullptr)));
+                return mh::list(mh::cons(mh::symbol("quote"), mh::cons(ReadForm())));
             } else if (tok.val == "`") {
-                return mh::list(mh::cons(mh::symbol("quasiquote"), mh::cons(ReadForm(), nullptr)));
+                return mh::list(mh::cons(mh::symbol("quasiquote"), mh::cons(ReadForm())));
             } else if (tok.val == "~") {
-                return mh::list(mh::cons(mh::symbol("unquote"), mh::cons(ReadForm(), nullptr)));
+                return mh::list(mh::cons(mh::symbol("unquote"), mh::cons(ReadForm())));
             } else if (tok.val == "~@") {
-                return mh::list(mh::cons(mh::symbol("splice-unquote"), mh::cons(ReadForm(), nullptr)));
+                return mh::list(mh::cons(mh::symbol("splice-unquote"), mh::cons(ReadForm())));
+            } else if (tok.val == "^") {
+                auto meta = ReadForm();
+                auto val = ReadForm();
+                return mh::list(mh::cons(mh::symbol("with-meta"), mh::cons(std::move(val), mh::cons(std::move(meta)))));
             } else {
                 throw mal_error{"Undefined token: " + tok.val};
             }
