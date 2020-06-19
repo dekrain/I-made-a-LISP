@@ -45,6 +45,26 @@ namespace mal {
         return env;
     }
 
+    inline void RequireMeta(const MalValue& val) {
+        if (mh::is_map(val.Meta()))
+            return;
+        // Override !! meta of the code value with an empty hash map
+        const_cast<MalValue&>(val).SetMeta(mh::hash_map(MalMap::Make()));
+    }
+
+    inline void SetMeta(const MalValue& target, const std::string& name, const MalValue& val) {
+        RequireMeta(target);
+        auto map = target.Meta().Map();
+        map->Set(mh::keyword(name), val);
+    }
+
+    inline MalValue GetMeta(const MalValue& target, const std::string& name) {
+        RequireMeta(target);
+        auto map = target.Meta().Map();
+        auto v = map->Lookup(mh::keyword(name));
+        return v == map->data.end() ? mh::nil : v->second.get();
+    }
+
     MalValue Interpreter::EvalAst(const MalValue& expr, const EnvironFrame& env) {
         switch (expr.tag) {
             case Symbol_T:
@@ -55,7 +75,13 @@ namespace mal {
                 return expr.tag == List_T ? mh::list(l) : mh::vector(l);
             }
             default:
-                return expr;
+                /*if (mh::is_num(expr) || mh::is_nil(expr) || mh::is_true(expr) || mh::is_false(expr)) {
+                    // Mark a constant
+                    SetMeta(expr, "constant_value", expr);
+                }*/
+                auto ret = expr;
+                ret.SetMeta(nullptr);
+                return ret;
         }
     }
 

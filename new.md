@@ -30,7 +30,7 @@ the constant is evaluated every time the expression is executed.
 
 A potential solution may be to track when a constant is produced, and when a constant is calculated based on
 other constants. When the outermost constant expression is detected, it may be replaced with the calculated constant
-(e.g. via code metadata; note: ADD METADATA!).
+(e.g. via code metadata).
 
 This can be further extended to more complex construct, such as in this `if` expression:
 ```clojure

@@ -61,6 +61,13 @@ namespace mal {
                     continue;
                 }
             }
+            if (ch == '^') {
+                if (i < src.length() && src[i] == '@') {
+                    ++i;
+                    tokens.emplace_back(toktype::special, "^@");
+                    continue;
+                }
+            }
             if (std::strchr(mal_single_chars, ch) != nullptr) {
                 tokens.emplace_back(toktype::special, std::string{ch});
                 continue;
@@ -152,6 +159,26 @@ namespace mal {
                 auto meta = ReadForm();
                 auto val = ReadForm();
                 return mh::list(mh::cons(mh::symbol("with-meta"), mh::cons(std::move(val), mh::cons(std::move(meta)))));
+            } else if (tok.val == "^@") { // Assign a metavalue to code
+                MalAtom meta = ReadForm();
+                if (mh::is_flist(meta.v) && mh::is_symbol(meta->li->First()) && ("hash-map" == meta->li->First().st->Get())) {
+                    if (!(meta->li->GetSize() & 1))
+                        throw mal_error{"hash-map takes even number of arguments"};
+                    auto mmeta = meta->meta;
+                    auto map = MalMap::Make();
+                    for (ListIterator it = meta->li->Rest(); it;) {
+                        const auto& key = *it;
+                        ++it;
+                        const auto& value = *it;
+                        ++it;
+                        map->Set(key, value);
+                    }
+                    meta = mh::hash_map(map);
+                    meta.v.meta = std::move(mmeta);
+                }
+                auto val = ReadForm();
+                val.SetMeta(meta.v);
+                return val;
             } else {
                 throw mal_error{"Undefined token: " + tok.val};
             }

@@ -4,7 +4,7 @@
 
 #include <sstream>
 
-#define DEF_FUNC(name) static MalValue _Core_##name([[gnu::unused]] Interpreter& interp, MalArgs&& args)
+#define DEF_FUNC(name) static MalValue _Core_##name([[maybe_unused]] Interpreter& interp, MalArgs&& args)
 #define EXP_FUNC(symbol_name, internal_name) env_global->set(symbol_name, mh::builtin(_Core_##internal_name));
 #define CHECK_ARGS(nArgs, name) \
     if (args.size() != nArgs) \
@@ -93,6 +93,15 @@ namespace {
             }
         }
         return mh::num(val);
+    }
+
+    DEF_FUNC(Mod) {
+        CHECK_ARGS(2, "mod takes 2 arguments");
+        if (!mh::is_num(args[0]) || !mh::is_num(args[1]))
+            throw mal_error{"mod only takes numbers"};
+        if (args[1].no == 0)
+            throw mal_error{"Division by zero"};
+        return mh::num((args[0].no % args[1].no + args[1].no) % args[1].no);
     }
 
     // Types
@@ -228,7 +237,7 @@ namespace {
         if (args.size() == 0)
             return mh::nil;
         const MalValue& v = args[0];
-        if (!(mh::is_list(v) || mh::is_vector(v)))
+        if (!mh::is_sequence(v))
             return mh::nil;
         return mh::num(v.li == nullptr ? 0 : v.li->GetSize());
     }
@@ -512,7 +521,14 @@ namespace {
     }
 #   endif
 
-    /* TODO: (get-system-info) -> {:recursion_limit @int :fs_enabled @bool} */
+    DEF_FUNC(GetSystem) {
+        CHECK_ARGS(0, "get-system-info");
+        auto info = MalMap::Make();
+        info->Set(mh::string("recursion_limit"), Interpreter::MAX_RECURSION_DEPTH);
+        info->Set(mh::string("filesystem_enabled"), mh::bool_val(static_cast<bool>(ENABLE_FS)));
+        //info->Set(mh::string("total_refs"), RefCounter::total_refs);
+        return info;
+    }
 }
 
 namespace mal {
@@ -624,6 +640,7 @@ namespace mal {
         EXP_FUNC("-", Sub)
         EXP_FUNC("*", Mul)
         EXP_FUNC("/", Div)
+        EXP_FUNC("mod", Mod);
         EXP_FUNC("list", NewList)
         EXP_FUNC("list?", IsList)
         EXP_FUNC("vector", NewVector)
@@ -669,6 +686,7 @@ namespace mal {
         EXP_FUNC("apply", Apply)
         EXP_FUNC("meta", GetMeta)
         EXP_FUNC("with-meta", WithMeta)
+        EXP_FUNC("get-system-info", GetSystem)
 #       if (ENABLE_FS)
         EXP_FUNC("slurp", Slurp)
         EXP_FUNC("load-library", LoadLibrary)

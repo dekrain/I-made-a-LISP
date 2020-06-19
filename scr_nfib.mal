@@ -1,0 +1,43 @@
+; N-Fibonacci calculation
+
+;(input n k)
+;(init
+;    (def arr (repeat 0 (- k 1) (list 1)))
+;    (def idx 0)
+;    (def sum 1))
+;(do
+;    (for i n (do
+;        (let* (o (nth arr (mod idx k))) (do
+;            (set! arr (mod idx k) sum)
+;            (redef sum (+ sum sum (- o)))
+;            (redef idx (+ idx 1))))))
+;    (nth arr (mod (- idx 1) k)))
+
+(def repeat (fn (el count tail) (if (<= count 0) tail (repeat el (- count 1) (cons el tail)))))
+(def repeat-ev (macro (expr count tail) `(if (<= ~count 0) ~tail (repeat-ev ~expr (- ~count 1) (cons ~expr ~tail)))))
+
+(def nfib-loop (fn (n k idx sum arr)
+    (if (<= n 0) @(nth arr (mod (- idx 1) k))
+        (let* (o @(nth arr (mod idx k))) (do
+            (reset! (nth arr (mod idx k)) sum)
+            (nfib-loop (- n 1) k (+ idx 1) (+ sum sum (- o)) arr))))))
+(def nfib (fn (n k)
+    (nfib-loop n k 0 1
+        (repeat-ev (atom 0) (- k 1) (list (atom 1))))))
+
+; ------------------------
+
+(def constr-args (fn (spec args)
+    (if (empty? args) spec
+        (cons (first spec) (cons (first args) (constr-args (rest (rest spec)) (rest args)))))))
+
+(def read-arg read-string)
+
+(def parse-args (macro (spec body)
+    `(let* ~(constr-args spec (map read-arg (rest *ARGV*))) ~body)))
+
+(parse-args
+    (n 100
+    k 5) (do
+    (prn (list 'Nfib n k))
+    (prn (nfib n k))))

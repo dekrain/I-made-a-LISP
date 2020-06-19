@@ -21,6 +21,12 @@
 (def map (fn (f l)
     (if (empty? l) l
         (cons (f (first l)) (map f (rest l)))))) ; FIXME: Tail call optimization
+; Tail-recursive operator that does not return a value (TCO)
+(def for-each (macro (l var body)
+    `(for-each-fn ~l (fn (~var) ~body))))
+(def for-each-fn (fn (l f)
+    (if (empty? l) nil
+        (do (f (first l)) (for-each-fn (rest l) f)))))
 
 ; This is the definition from the guide
 ; (apply-before Function A1 A2 A3 ... ARest) -> (apply Function (concat (list A1 A2 A3 ...) ARest))
@@ -53,6 +59,21 @@
             (list 'quote expr))))
     (macro (expr) (cor-quasiquote expr))))
 
+; Print a metavalue of a value if it has any (non-nil)
+(def print-meta (fn (x) (if (not (nil? (meta x))) (prn (symbol "Found a metavalue:") (meta x) (symbol "for") x))))
+
+; Recursively check a data structure for meta values (and them also)
+(def inspect-meta (fn (x)
+    (do
+        (print-meta x) ; Print meta of x
+        (if (not (nil? (meta x))) (inspect-meta (meta x))) ; Recursively inspect meta of x if it's not nil (to avoid infinite loop)
+        (cond ; Inspect x for nested values
+            (sequence? x) (for-each x el (inspect-meta el))
+            (map? x) (do
+                (for-each (keys x) el (inspect-meta el))
+                (for-each (vals x) el (inspect-meta el)))
+            (atom? x) (inspect-meta @x)
+        ))))
 
 (def *DEBUG* (atom false))
 (def debug& (macro (ast) (if @*DEBUG* ast nil)))

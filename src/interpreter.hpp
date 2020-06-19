@@ -21,9 +21,10 @@ namespace mal {
         MalValue QuasiQuote(const MalValue& expr);
 
         // ! WARNING: Platform specific
-        static constexpr std::size_t MAX_RECURSION_DEPTH = 500;
         std::size_t recursion_depth = 0;
     public:
+        static constexpr std::size_t MAX_RECURSION_DEPTH = 500;
+
         EnvironFrame env_global;
         Printer& printer;
 

@@ -3,7 +3,8 @@ import subprocess
 import sys
 import os.path
 
-cpp_args = '-Wall', '-Wextra', '-std=c++17'
+cpp_args = '-Wall', '-Wextra', '-Wno-mismatched-tags', '-std=c++17'
+cpp_name = 'clang'
 ld_args = '-static',
 exe_file = 'mal_repl.exe'
 source = 'src/*.cpp'
@@ -14,7 +15,7 @@ obj_files = []
 
 def comp_source(src_file, out_file):
     print('Compiling file {} ---> {}'.format(src_file, out_file))
-    proc = subprocess.run(('g++',) + cpp_args + (src_file, '-c', '-o', out_file))
+    proc = subprocess.run((cpp_name,) + cpp_args + (src_file, '-c', '-o', out_file))
     if proc.returncode != 0:
         print('Compilation failed')
         sys.exit(1)
@@ -34,5 +35,5 @@ for src_file in glob.iglob(source):
     if comp:
         comp_source(src_file, out_file)
 
-subprocess.run(('g++', '-o', exe_file) + ld_args + tuple(obj_files))
+subprocess.run((cpp_name, '-o', exe_file) + ld_args + tuple(obj_files))
 print('Compilation completed')

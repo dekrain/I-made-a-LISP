@@ -5,8 +5,9 @@ Overview of the language below
 
 # Compilation
 I've included a `compile.py` script, which you can use to compile the main binary.
-It works under Windows, GCC, C++17.
+It works in clang, C++17.
 Tested under python 3.
+To change the compiler, set `cpp_name` in `compile.py`
 Usage is as follows:
 ```sh
 # Compiles all files

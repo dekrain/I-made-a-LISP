@@ -4,6 +4,7 @@
 #include <functional>
 #include <stack>
 #include <vector>
+#include <type_traits>
 
 namespace mal {
     class mal_error;
@@ -32,6 +33,12 @@ namespace mal {
     };
 
     struct MalAtom;
+
+    struct RefCounter {
+        static std::size_t total_refs;
+        RefCounter() {++total_refs; }
+        ~RefCounter() {--total_refs; }
+    };
 
     struct MalValue {
         using builtin_t = MalValue(*)(class Interpreter&, class MalArgs&&);
@@ -165,6 +172,13 @@ namespace mal {
             return mp;
         }
 
+        MalValue Meta() const;
+
+        void SetMeta(const MalValue& m);
+        void SetMeta(std::nullptr_t) {
+            meta = nullptr;
+        }
+
         friend inline bool operator!=(const MalValue& a, const MalValue& b) { return !(a == b); }
         friend bool operator==(const MalValue&, const MalValue&);
         friend int compare(const MalValue& a, const MalValue& b);
@@ -226,6 +240,14 @@ namespace mal {
             new (&v) T{std::forward<Args>(args)...};
         }
     };
+
+    inline void MalValue::SetMeta(const MalValue& m) {
+        meta = MalAtom::Make(m);
+    }
+
+    inline MalValue MalValue::Meta() const {
+        return meta ? meta->get() : MalValue();
+    }
 }
 
 namespace mh {
@@ -243,7 +265,7 @@ namespace mal {
         MalValue msg;
 
         mal_error(MalValue&& msg) : msg(std::move(msg)) {}
-        mal_error(const std::string&& s_msg) : msg(mal::MalValue{mal::MalString::Make(std::move(s_msg)), mal::String_T}) {}
+        mal_error(std::string&& s_msg) : msg(mal::MalValue{mal::MalString::Make(std::move(s_msg)), mal::String_T}) {}
     };
 }
 
@@ -345,7 +367,7 @@ namespace mh {
         return mal::MalList::Make(std::move(car), std::move(cdr));
     }
 
-    template <typename F>
+    template <typename F, typename = std::enable_if_t<std::is_invocable_r_v<mal::MalValue, F, const mal::MalValue&>>>
     inline std::shared_ptr<mal::MalList> map(const mal::MalList& list, /*std::function<mal::MalValue(const mal::MalValue&)>*/ F&& func) {
         mal::ListBuilder l;
         for (const mal::MalList* node = &list; node != nullptr; node = node->Rest().get()) {

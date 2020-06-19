@@ -82,7 +82,7 @@ namespace mal {
         do {
             st.push(sp);
             if (sp->s_map) {
-                data = sp->v_map->data; // Copy underlying map
+                data.merge(sp->v_map->data); // Copy underlying map
                 break;
             }
             sp = sp->v_spec.get();
