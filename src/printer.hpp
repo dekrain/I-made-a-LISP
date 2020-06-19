@@ -21,15 +21,36 @@ namespace mal {
     };
 
     class OstreamPrinter : public Printer {
+    protected:
         std::ostream& stream;
         bool is_raw;
     public:
         OstreamPrinter(std::ostream& stream) : stream{stream} {}
 
-        Printer& operator<<(print_begin_t);
-        Printer& operator<<(print_end_t);
-        Printer& operator<<(const MalValue& value);
-        Printer& operator<<(const std::string& str);
+        virtual Printer& operator<<(print_begin_t);
+        virtual Printer& operator<<(print_end_t);
+        virtual Printer& operator<<(const MalValue& value);
+        virtual Printer& operator<<(const std::string& str);
+    };
+
+    struct TTYColors {
+        using str = const char*;
+        static constexpr str reset = "\e[0m";
+        static constexpr str boolean = "\e[96m";
+        static constexpr str nil = "\e[90m";
+        static constexpr str number = "\e[93m";
+        static constexpr str keyword = "\e[95m";
+        static constexpr str string = "\e[92m";
+    };
+
+    class TTYPrinter : public OstreamPrinter {
+    protected:
+        using _Base = OstreamPrinter;
+    public:
+        using OstreamPrinter::OstreamPrinter;
+        using OstreamPrinter::operator<<;
+
+        virtual Printer& operator<<(const MalValue& value) override;
     };
 
     // Escape a string to represent special codes as escape sequences and with prefix/affix '"'

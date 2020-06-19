@@ -3,12 +3,15 @@
 #include "printer.hpp"
 #include "interpreter.hpp"
 
+std::size_t mal::RefCounter::total_refs = 0;
+
 typedef mal::MalValue repl_expr;
 typedef std::string repl_src;
 
 static const std::string repl_prompt = "> ";
 
-static mal::OstreamPrinter printer{std::cout};
+// ! Assuming stdout is actually a TTY
+static mal::TTYPrinter printer{std::cout};
 
 inline repl_expr read(const repl_src& src) {
     return mal::ReadForm(src);

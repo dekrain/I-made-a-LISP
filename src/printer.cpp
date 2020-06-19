@@ -82,6 +82,45 @@ namespace mal {
         return *this;
     }
 
+    Printer& TTYPrinter::operator<<(const MalValue& value) {
+        if (is_raw)
+            return _Base::operator<<(value);
+        switch (value.tag) {
+            case Nil_T:
+                stream << TTYColors::nil << "nil" << TTYColors::reset;
+                break;
+            case True_T:
+                stream << TTYColors::boolean << "true" << TTYColors::reset;
+                break;
+            case False_T:
+                stream << TTYColors::boolean << "false" << TTYColors::reset;
+                break;
+            case Int_T:
+                stream << TTYColors::number << value.no << TTYColors::reset;
+                break;
+            case Keyword_T:
+                stream << TTYColors::keyword << ":" << value.st->Get() << TTYColors::reset;
+                break;
+            case String_T:
+                //if (is_raw)
+                //    stream << value.st->Get();
+                //else
+                    stream << TTYColors::string << EscapeString(value.st->Get()) << TTYColors::reset;
+                break;
+            case Symbol_T:
+            case List_T:
+            case Vector_T:
+            case Map_T:
+            case MapSpec_T:
+            case Builtin_T:
+            case Function_T:
+            case Atom_T:
+            default:
+                return _Base::operator<<(value);
+        }
+        return *this;
+    }
+
     std::string EscapeString(const std::string& str) {
         std::string res;
         std::size_t i = 0;
