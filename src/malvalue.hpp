@@ -98,60 +98,111 @@ namespace mal {
               at{std::move(atom)} {}
 
         ~MalValue() {
-            if (tag == List_T || tag == Vector_T) {
-                li.~shared_ptr();
-            } else if (tag == Map_T) {
-                mp.~shared_ptr();
-            } else if (tag == MapSpec_T) {
-                ms.~shared_ptr();
-            } else if (tag == String_T || tag == Symbol_T || tag == Keyword_T) {
-                st.~shared_ptr();
-            } else if (tag == Builtin_T) {
-                ;
-            } else if (tag == Function_T) {
-                fun.~shared_ptr();
-            } else if (tag == Atom_T) {
-                at.~shared_ptr();
+            switch (tag) {
+                case List_T:
+                case Vector_T:
+                    li.~shared_ptr();
+                    break;
+                case Map_T:
+                    mp.~shared_ptr();
+                    break;
+                case MapSpec_T:
+                    ms.~shared_ptr();
+                    break;
+                case String_T:
+                case Symbol_T:
+                case Keyword_T:
+                    st.~shared_ptr();
+                    break;
+                // Reserved for future modifications
+                case Builtin_T:
+                    break;
+                case Function_T:
+                    fun.~shared_ptr();
+                    break;
+                case Atom_T:
+                    at.~shared_ptr();
+                    break;
+                // Noops
+                case Nil_T:
+                case True_T:
+                case False_T:
+                case Int_T:
+                    break;
             }
         }
 
         MalValue(const MalValue& cop) : tag{cop.tag}, meta{cop.meta} {
-            if (tag == List_T || tag == Vector_T) {
-                init(li, cop.li);
-            } else if (tag == Map_T) {
-                init(mp, cop.mp);
-            } else if (tag == MapSpec_T) {
-                init(ms, cop.ms);
-            } else if (tag == String_T || tag == Symbol_T || tag == Keyword_T) {
-                init(st, cop.st);
-            } else if (tag == Builtin_T) {
-                init(blt, cop.blt);
-            } else if (tag == Function_T) {
-                init(fun, cop.fun);
-            } else if (tag == Atom_T) {
-                init(at, cop.at);
-            } else if (tag == Int_T) {
-                no = cop.no;
+            switch (tag) {
+                case List_T:
+                case Vector_T:
+                    init(li, cop.li);
+                    break;
+                case Map_T:
+                    init(mp, cop.mp);
+                    break;
+                case MapSpec_T:
+                    init(ms, cop.ms);
+                    break;
+                case String_T:
+                case Symbol_T:
+                case Keyword_T:
+                    init(st, cop.st);
+                    break;
+                case Builtin_T:
+                    init(blt, cop.blt);
+                    break;
+                case Function_T:
+                    init(fun, cop.fun);
+                    break;
+                case Atom_T:
+                    init(at, cop.at);
+                    break;
+                case Int_T:
+                    no = cop.no;
+                    break;
+                // Noops
+                case Nil_T:
+                case True_T:
+                case False_T:
+                    break;
             }
         }
 
         MalValue(MalValue&& src) : tag{std::exchange(src.tag, Nil_T)}, meta{std::move(src.meta)} {
-            if (tag == List_T || tag == Vector_T) {
-                init(li, std::move(src.li));
-            } else if (tag == Map_T) {
-                init(mp, std::move(src.mp));
-            } else if (tag == MapSpec_T) {
-                init(ms, std::move(src.ms));
-            } else if (tag == String_T || tag == Symbol_T || tag == Keyword_T) {
-                init(st, std::move(src.st));
-            } else if (tag == Builtin_T) {
-                init(blt, std::move(src.blt));
-            } else if (tag == Function_T) {
-                init(fun, std::move(src.fun));
-            } else if (tag == Atom_T) {
-                init(at, std::move(src.at));
-            } else if (tag == Int_T) {
-                no = src.no;
+            switch (tag) {
+                case List_T:
+                case Vector_T:
+                    init(li, std::move(src.li));
+                    break;
+                case Map_T:
+                    init(mp, std::move(src.mp));
+                    break;
+                case MapSpec_T:
+                    init(ms, std::move(src.ms));
+                    break;
+                case String_T:
+                case Symbol_T:
+                case Keyword_T:
+                    init(st, std::move(src.st));
+                    break;
+                case Builtin_T:
+                    init(blt, std::move(src.blt));
+                    break;
+                case Function_T:
+                    init(fun, std::move(src.fun));
+                    break;
+                case Atom_T:
+                    init(at, std::move(src.at));
+                    break;
+                case Int_T:
+                    no = src.no;
+                    break;
+                // Noops
+                case Nil_T:
+                case True_T:
+                case False_T:
+                    break;
             }
         }
 
