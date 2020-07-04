@@ -33,14 +33,14 @@ namespace mal {
         virtual Printer& operator<<(const std::string& str);
     };
 
-    struct TTYColors {
+    namespace TTYColors {
         using str = const char*;
-        static constexpr str reset = "\e[0m";
-        static constexpr str boolean = "\e[96m";
-        static constexpr str nil = "\e[90m";
-        static constexpr str number = "\e[93m";
-        static constexpr str keyword = "\e[95m";
-        static constexpr str string = "\e[92m";
+        constexpr str reset = "\e[0m";
+        constexpr str boolean = "\e[96m";
+        constexpr str nil = "\e[90m";
+        constexpr str number = "\e[93m";
+        constexpr str keyword = "\e[95m";
+        constexpr str string = "\e[92m";
     };
 
     class TTYPrinter : public OstreamPrinter {

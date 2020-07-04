@@ -162,6 +162,12 @@ namespace {
         return mh::bool_val(mh::is_sequence(args[0]));
     }
 
+    DEF_FUNC(IsNumber) {
+        if (args.size() == 0)
+            return mh::mal_false;
+        return mh::bool_val(mh::is_num(args[0]));
+    }
+
     DEF_FUNC(NewAtom) {
         if (args.size() == 0)
             return mh::atom();
@@ -229,7 +235,11 @@ namespace {
         if (args.size() == 0)
             return mh::mal_false;
         const MalValue& v = args[0];
-        return mh::bool_val((mh::is_list(v) || mh::is_vector(v)) && (v.li == nullptr));
+        if (mh::is_sequence(v))
+            return mh::bool_val(v.li == nullptr);
+        else if (mh::is_string(v))
+            return mh::bool_val(v.st->Get().size() == 0);
+        return mh::nil;
     }
 
     DEF_FUNC(ElementCount) {
@@ -237,9 +247,11 @@ namespace {
         if (args.size() == 0)
             return mh::nil;
         const MalValue& v = args[0];
-        if (!mh::is_sequence(v))
-            return mh::nil;
-        return mh::num(v.li == nullptr ? 0 : v.li->GetSize());
+        if (mh::is_sequence(v))
+            return mh::num(v.li == nullptr ? 0 : v.li->GetSize());
+        else if (mh::is_string(v))
+            return mh::num(v.st->Get().size());
+        return mh::nil;
     }
 
     DEF_FUNC(First) {
@@ -260,12 +272,17 @@ namespace {
         CHECK_ARGS(2, "nth");
         if (!mh::is_num(args[1]))
             throw mal_error{"Second argument must be a valid index"};
-        if (!mh::is_fseq(args[0]))
-            return mh::nil;
         int idx = args[1].no;
-        if (idx < 0 || idx >= args[0].li->GetSize())
-            return mh::nil;
-        return args[0].li->At(idx);
+        if (mh::is_fseq(args[0])) {
+            if (idx < 0 || idx >= args[0].li->GetSize())
+                return mh::nil;
+            return args[0].li->At(idx);
+        } else if (mh::is_string(args[0])) {
+            if (idx < 0 || idx >= args[0].st->Get().size())
+                return mh::string("");
+            return mh::string(mal::MalString::string_t(1, args[0].st->Get()[idx]));
+        }
+        return mh::nil;
     }
 
     DEF_FUNC(Cons) {
@@ -319,11 +336,16 @@ namespace {
 
     DEF_FUNC(MapContains) {
         CHECK_ARGS(2, "contains?");
-        if (!mh::is_map(args[0]))
-            throw mal_error{"First argument must be a hash-map"};
-        auto m = mh::as_map(args[0]);
-        auto i = m->Lookup(args[1]);
-        return mh::bool_val(i != m->data.end());
+        if (mh::is_map(args[0])) {
+            auto m = mh::as_map(args[0]);
+            auto i = m->Lookup(args[1]);
+            return mh::bool_val(i != m->data.end());
+        } else if (mh::is_string(args[0])) {
+            if (!mh::is_string(args[1]))
+                throw mal_error{"All arguments must be strings for a string search"};
+            return mh::bool_val(args[0].st->Get().find(args[1].st->Get()) != mal::MalString::string_t::npos);
+        }
+        throw mal_error{"First argument must be a hash-map or a string"};
     }
 
     DEF_FUNC(MapKeys) {
@@ -458,6 +480,29 @@ namespace {
         }
         const auto& str = args[0].st->Get();
         return mal::ReadForm(str);
+    }
+
+    DEF_FUNC(Substr) {
+        CHECK_ARGS(3, "substr");
+        if (!mh::is_string(args[0]) || !mh::is_num(args[1]) || !mh::is_num(args[2]))
+            throw mal_error{"substr takes string, number, number"};
+        int a = args[1].no;
+        int b = args[2].no;
+        if (a < 0 || b < 0)
+            throw mal_error{"Ranges must not be negative"};
+        if (a+b > args[0].st->Get().size())
+            throw mal_error{"Indexing past string end"};
+        return mh::string(args[0].st->Get().substr(a, b));
+    }
+
+    DEF_FUNC(CharIdx) {
+        CHECK_ARGS(1, "char-index");
+        if (!mh::is_num(args[0]))
+            throw mal_error{"Index must be a number"};
+        int i = args[0].no;
+        if (i < 0 || i >= 0x100)
+            throw mal_error{"Index must be in byte range"};
+        return mh::string(MalString::string_t(1, (unsigned char)i));
     }
 
     // Runtime
@@ -648,6 +693,7 @@ namespace mal {
         EXP_FUNC("hash-map", NewMap)
         EXP_FUNC("map?", IsMap)
         EXP_FUNC("sequence?", IsSequence)
+        EXP_FUNC("number?", IsNumber)
         EXP_FUNC("atom", NewAtom)
         EXP_FUNC("atom?", IsAtom)
         EXP_FUNC("symbol", NewSymbol)
@@ -681,6 +727,8 @@ namespace mal {
         EXP_FUNC("prn", PPrint)
         EXP_FUNC("println", PrintLn)
         EXP_FUNC("read-string", ReadString)
+        EXP_FUNC("substr", Substr)
+        EXP_FUNC("char-index", CharIdx)
         EXP_FUNC("eval", DoEval)
         EXP_FUNC("throw", DoThrow)
         EXP_FUNC("apply", Apply)

@@ -18,6 +18,7 @@
 (def last (fn (l) (if (empty? (rest l)) (first l) (last (rest l)))))
 (def but-last (fn (l) (if (empty? (rest l)) ()
     (cons (first l) (but-last (rest l)))))) ; FIXME: Tail call optimization
+(def reverse (fn (l t) (if (empty? l) t (reverse (rest l) (cons (first l) t)))))
 (def map (fn (f l)
     (if (empty? l) l
         (cons (f (first l)) (map f (rest l)))))) ; FIXME: Tail call optimization
@@ -27,6 +28,11 @@
 (def for-each-fn (fn (l f)
     (if (empty? l) nil
         (do (f (first l)) (for-each-fn (rest l) f)))))
+
+(def while (macro (test & body)
+    `((fn (f) (f f)) ; Combinator for applying function to itself
+    (fn (f) (if ~test (do ~@body (f f))))) ; Calls the body in a loop
+))
 
 ; This is the definition from the guide
 ; (apply-before Function A1 A2 A3 ... ARest) -> (apply Function (concat (list A1 A2 A3 ...) ARest))
@@ -46,6 +52,8 @@
 (def false? (fn (x) (= x false)))
 (def flist? (fn (x) (and (list? x) (not (empty? x)))))
 (def fseq? (fn (x) (and (sequence? x) (not (empty? x)))))
+
+(def seq-contains? (fn (s el) (if (empty? s) false (if (= (first s) el) true (seq-contains? (rest s) el)))))
 
 ; Experimental: MAL-defined quasiquote. Original S-expr definition: src/interpreter.cc:Interpreter/QuasiQuote()
 (def cor-quasiquote (let* (

@@ -90,6 +90,8 @@ namespace mal {
                             buf += '"';
                         else if (ch == 'n')
                             buf += '\n';
+                        else if (ch == 't')
+                            buf += '\t';
                         else
                             buf += ch;
                     } else {
