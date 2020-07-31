@@ -1,6 +1,21 @@
 #include "interpreter.hpp"
 
 namespace mal {
+    std::array<std::shared_ptr<MalString>, 10> Interpreter::InitSymbols() {
+        return {
+            str_interner.Intern("def"),
+            str_interner.Intern("let*"),
+            str_interner.Intern("do"),
+            str_interner.Intern("if"),
+            str_interner.Intern("fn"),
+            str_interner.Intern("macro"),
+            str_interner.Intern("quote"),
+            str_interner.Intern("quasiquote"),
+            str_interner.Intern("macroexpand"),
+            str_interner.Intern("try*")
+        };
+    }
+
     MalValue CreateFunction(const std::shared_ptr<MalList>& args, const EnvironFrame& env, MalFunction::FKind kind) {
         if (args->GetSize() != 2)
             throw mal_error{"Function takes 2 arguments"};
@@ -118,8 +133,12 @@ namespace mal {
     bool Interpreter::Apply(MalAtom& curr, EnvironFrame& env, const MalValue& func, std::shared_ptr<MalList> args) {
         // Check special values
         if (func.tag == Symbol_T) {
-            const MalString::string_t& sym = func.st->Get();
-            if (sym == "def") {
+            std::shared_ptr<MalString> sym = func.st;
+            if (!sym->IsInterned(&str_interner)) {
+                sym = str_interner.Intern(sym->Get());
+            }
+
+            if (sym == symbols_form[symDef]) {
                 if (args->GetSize() != 2)
                     throw mal_error{"Def! takes 2 arguments"};
                 MalValue key = args->At(0);
@@ -129,7 +148,7 @@ namespace mal {
                 env->set(key.st->Get(), val);
                 RET_VALUE(MV(val));
             }
-            else if (sym == "let*") {
+            else if (sym == symbols_form[symLet]) {
                 if (args->GetSize() != 2)
                     throw mal_error{"Let* takes 2 arguments"};
                 if (args->At(0).tag != List_T)
@@ -149,7 +168,7 @@ namespace mal {
                 }
                 RET_TCO(args->At(1), MV(e));
             }
-            else if (sym == "do") {
+            else if (sym == symbols_form[symDo]) {
                 ListIterator it = args;
                 if (!it)
                     RET_VALUE(mh::nil);
@@ -162,7 +181,7 @@ namespace mal {
                 }
                 RET_TCO(val.get(), env);
             }
-            else if (sym == "if") {
+            else if (sym == symbols_form[symIf]) {
                 if (args->GetSize() != 3 && args->GetSize() != 2)
                     throw mal_error{"If takes 2 or 3 arguments"};
                 MalValue res = EvaluateExpression(args->At(0), env);
@@ -173,23 +192,23 @@ namespace mal {
                 else
                     RET_VALUE(mh::nil);
             }
-            else if (sym == "fn") {
+            else if (sym == symbols_form[symFn]) {
                 RET_VALUE(CreateFunction(args, env, MalFunction::KFunc));
             }
-            else if (sym == "macro") {
+            else if (sym == symbols_form[symMacro]) {
                 RET_VALUE(CreateFunction(args, env, MalFunction::KMacro));
             }
-            else if (sym == "quote") {
+            else if (sym == symbols_form[symQuote]) {
                 if (args->GetSize() != 1)
                     throw mal_error{"Quote takes 1 argument"};
                 RET_VALUE(args->First());
             }
-            else if (sym == "quasiquote") {
+            else if (sym == symbols_form[symQuasiquote]) {
                 if (args->GetSize() != 1)
                     throw mal_error{"QuasiQuote takes 1 argument"};
                 RET_TCO(QuasiQuote(args->First()), env);
             }
-            else if (sym == "macroexpand") {
+            else if (sym == symbols_form[symMacroexpand]) {
                 // ! WARNING: Can cause side effects (always evaluates the callee expression)
                 // ! EXTRA WARNING: Silently ignores errors in the callee-expr evaluation
                 if (args->GetSize() != 1)
@@ -209,7 +228,7 @@ namespace mal {
                 }
                 RET_VALUE(sub_expr.get());
             }
-            else if (sym == "try*") {
+            else if (sym == symbols_form[symTry]) {
                 if (args->GetSize() != 3)
                     throw mal_error{"try* takes 3 arguments"};
                 if (!mh::is_symbol(args->At(1)))

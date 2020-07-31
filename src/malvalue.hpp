@@ -326,9 +326,15 @@ namespace mal {
 
 // Mal helpers
 namespace mh {
+    using std::move;
+    template <typename T>
+    inline T copy(const T& v) {return v; }
+
     // Value makers
 
-    inline mal::MalValue copy(const mal::MalValue& v) {return v; }
+    inline std::shared_ptr<mal::MalString> maybe_intern(std::string&& str, mal::StringInternPool* pool) {
+        return pool ? pool->Intern(move(str)) : mal::MalString::Make(move(str));
+    }
 
     inline mal::MalValue list(const std::shared_ptr<mal::MalList>& list) {
         return mal::MalValue{list, mal::List_T};
@@ -352,6 +358,18 @@ namespace mh {
 
     inline mal::MalValue keyword(const std::string& str) {
         return mal::MalValue{mal::MalString::Make(str), mal::Keyword_T};
+    }
+
+    inline mal::MalValue symbol(std::shared_ptr<mal::MalString>&& str) {
+        return mal::MalValue{std::move(str), mal::Symbol_T};
+    }
+
+    inline mal::MalValue string(std::shared_ptr<mal::MalString>&& str) {
+        return mal::MalValue{std::move(str), mal::String_T};
+    }
+
+    inline mal::MalValue keyword(std::shared_ptr<mal::MalString>&& str) {
+        return mal::MalValue{std::move(str), mal::Keyword_T};
     }
 
     inline mal::MalValue num(int val) {

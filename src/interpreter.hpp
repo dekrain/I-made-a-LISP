@@ -5,6 +5,7 @@
 
 #include <unordered_map>
 #include <vector>
+#include <array>
 
 #include "malvalue.hpp"
 #include "printer.hpp"
@@ -15,6 +16,7 @@ namespace mal {
 
     class Interpreter {
         void InitEnv();
+        std::array<std::shared_ptr<MalString>, 10> InitSymbols();
 
         MalValue EvalAst(const MalValue& expr, const EnvironFrame& env);
         bool Apply(MalAtom& curr, EnvironFrame& env, const MalValue& func, std::shared_ptr<MalList> args);
@@ -28,7 +30,15 @@ namespace mal {
         EnvironFrame env_global;
         Printer& printer;
 
-        Interpreter(Printer& printer) : printer{printer} {
+        StringInternPool str_interner;
+        // Interned symbols
+        enum {
+            symDef, symLet, symDo, symIf, symFn, symMacro,
+            symQuote, symQuasiquote, symMacroexpand, symTry
+        };
+        std::array<std::shared_ptr<MalString>, 10> symbols_form;
+
+        Interpreter(Printer& printer) : printer{printer}, symbols_form{InitSymbols()} {
             InitEnv();
         }
 

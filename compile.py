@@ -3,7 +3,11 @@ import subprocess
 import sys
 import os.path
 
-cpp_args = '-Wall', '-Wextra', '-Wno-mismatched-tags', '-std=c++17'
+optimize = True
+cpp_args = ['-Wall', '-Wextra', '-Wno-mismatched-tags', '-std=c++17']
+if optimize:
+    cpp_args.append('-O')
+cpp_args = tuple(cpp_args)
 cpp_name = 'clang'
 ld_args = '-static',
 exe_file = 'mal_repl.exe'

@@ -48,7 +48,7 @@ namespace mal {
         return c1 >= '0' && c1 <= '9';
     }
 
-    Reader Reader::ParseString(const std::string& src) {
+    Reader Reader::ParseString(const std::string& src, StringInternPool* str_interner) {
         std::vector<token> tokens;
         for (std::size_t i = 0; i < src.length(); ) {
             char ch = src[i++];
@@ -129,7 +129,7 @@ namespace mal {
             }
             i = end;
         }
-        return Reader{std::move(tokens)};
+        return Reader{std::move(tokens), str_interner};
     }
 
     MalValue Reader::ReadForm() {
@@ -213,13 +213,13 @@ namespace mal {
                 else if (token.val == "false")
                     return mh::mal_false;
                 else
-                    return mh::symbol(token.val);
+                    return mh::symbol(mh::maybe_intern(mh::copy(token.val), str_interner));
             case toktype::number:
                 return mh::num(_ParseInt(token.val));
             case toktype::keyword:
-                return mh::keyword(token.val);
+                return mh::keyword(mh::maybe_intern(mh::copy(token.val), str_interner));
             case toktype::string:
-                return mh::string(token.val);
+                return mh::string(mh::maybe_intern(mh::copy(token.val), str_interner));
             default:
                 throw mal_error{"Undefined token"};
         }

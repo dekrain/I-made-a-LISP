@@ -13,8 +13,8 @@ static const std::string repl_prompt = "> ";
 // ! Assuming stdout is actually a TTY
 static mal::TTYPrinter printer{std::cout};
 
-inline repl_expr read(const repl_src& src) {
-    return mal::ReadForm(src);
+inline repl_expr read(const repl_src& src, mal::StringInternPool* str_interner) {
+    return mal::ReadForm(src, str_interner);
 }
 
 inline repl_expr eval(const repl_expr& expr, mal::Interpreter& interp) {
@@ -26,13 +26,13 @@ inline void print(const repl_expr& expr) {
 }
 
 inline void rep(const repl_src& src, mal::Interpreter& interp) {
-    mal::MalValue v = eval(read(src), interp);
+    mal::MalValue v = eval(read(src, &interp.str_interner), interp);
     if (!mh::is_nil(v))
         print(v);
 }
 
 inline mal::MalValue re(const repl_src& src, mal::Interpreter& interp) {
-    return eval(read(src), interp);
+    return eval(read(src, &interp.str_interner), interp);
 }
 
 int main(int argc, char** argv) {

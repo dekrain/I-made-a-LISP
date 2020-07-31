@@ -26,13 +26,15 @@ namespace mal {
     };
 
     class Reader {
+        StringInternPool* str_interner;
+
         std::vector<token> tokens;
         std::size_t idx = 0;
 
         std::shared_ptr<MalList> ReadList(const token& endtok);
         MalValue ReadSingle(const token& token);
     public:
-        Reader(std::vector<token>&& tokens) : tokens{tokens} {}
+        Reader(std::vector<token>&& tokens, StringInternPool* str_interner = nullptr) : str_interner{str_interner}, tokens{tokens} {}
 
         const token& Peek() const {
             if (idx >= tokens.size())
@@ -61,11 +63,11 @@ namespace mal {
         MalValue ReadForm();
 
         // TODO(Maybe?): Create internal string class: ::mal::string
-        static Reader ParseString(const std::string& src);
+        static Reader ParseString(const std::string& src, StringInternPool* str_interner = nullptr);
     };
 
-    static inline MalValue ReadForm(const std::string& src) {
-        Reader reader = Reader::ParseString(src);
+    static inline MalValue ReadForm(const std::string& src, StringInternPool* str_interner = nullptr) {
+        Reader reader = Reader::ParseString(src, str_interner);
         return reader.ReadForm();
     }
 }

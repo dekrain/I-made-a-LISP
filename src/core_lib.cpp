@@ -479,7 +479,7 @@ namespace {
             throw mal_error{"First argument must be a string"};
         }
         const auto& str = args[0].st->Get();
-        return mal::ReadForm(str);
+        return mal::ReadForm(str, &interp.str_interner);
     }
 
     DEF_FUNC(Substr) {
@@ -565,6 +565,43 @@ namespace {
         return mh::nil;
     }
 #   endif
+
+    DEF_FUNC(GetRefcount) {
+        CHECK_ARGS(1, "ref-count");
+        auto& val = args[0];
+        switch (val.tag) {
+            case List_T:
+            case Vector_T:
+                return mh::num(val.li.use_count());
+            case Map_T:
+                return mh::num(val.mp.use_count());
+            case MapSpec_T:
+                return mh::num(val.ms.use_count());
+            case Symbol_T:
+            case Keyword_T:
+            case String_T:
+                return mh::num(val.st.use_count());
+            case Function_T:
+                return mh::num(val.fun.use_count());
+            case Atom_T:
+                return mh::num(val.at.use_count());
+            default:
+                return mh::nil;
+        }
+    }
+
+    DEF_FUNC(Intern) {
+        CHECK_ARGS(1, "intern");
+        auto& val = args[0];
+        switch (val.tag) {
+            case Symbol_T:
+            case Keyword_T:
+            case String_T:
+                return MalValue{interp.str_interner.Intern(mh::copy(val.st->Get())), val.tag};
+            default:
+                throw mal_error{"Only string-like values can be interned"};
+        }
+    }
 
     DEF_FUNC(GetSystem) {
         CHECK_ARGS(0, "get-system-info");
@@ -734,6 +771,8 @@ namespace mal {
         EXP_FUNC("apply", Apply)
         EXP_FUNC("meta", GetMeta)
         EXP_FUNC("with-meta", WithMeta)
+        EXP_FUNC("ref-count", GetRefcount)
+        EXP_FUNC("intern", Intern)
         EXP_FUNC("get-system-info", GetSystem)
 #       if (ENABLE_FS)
         EXP_FUNC("slurp", Slurp)
